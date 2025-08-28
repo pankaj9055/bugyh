@@ -1,122 +1,128 @@
-import { sql, relations } from "drizzle-orm";
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
-import { createInsertSchema } from "drizzle-zod";
+
+import { pgTable, text, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = sqliteTable("users", {
+// Users table
+export const users = pgTable("users", {
   id: text("id").primaryKey().$default(() => crypto.randomUUID()),
   username: text("username").notNull().unique(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   fullName: text("full_name").notNull(),
   phone: text("phone").notNull(),
-  role: text("role").notNull().default("user"), // 'user' or 'admin'
+  role: text("role").notNull().default("user"),
   balance: text("balance").notNull().default("0"),
   totalDeposits: text("total_deposits").notNull().default("0"),
   totalWithdrawals: text("total_withdrawals").notNull().default("0"),
   totalProfit: text("total_profit").notNull().default("0"),
-  currentTier: integer("current_tier").notNull().default(1), // User's current tier level
+  currentTier: integer("current_tier").notNull().default(1),
   referralCode: text("referral_code").notNull().unique(),
   referredBy: text("referred_by"),
   profilePhoto: text("profile_photo"),
-  // Payment methods for withdrawal
   upiId: text("upi_id"),
   accountHolderName: text("account_holder_name"),
   accountNumber: text("account_number"),
   ifscCode: text("ifsc_code"),
   bankName: text("bank_name"),
-  isActive: integer("is_active", { mode: 'boolean' }).notNull().default(true),
-  createdAt: integer("created_at").notNull().$default(() => Date.now()),
-  updatedAt: integer("updated_at").notNull().$default(() => Date.now()),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const investmentPlans = sqliteTable("investment_plans", {
+// Investment plans table
+export const investmentPlans = pgTable("investment_plans", {
   id: integer("id").primaryKey(),
   name: text("name").notNull(),
   amount: text("amount").notNull(),
   dailyReturn: text("daily_return").notNull(),
   maxWithdrawalPerDay: text("max_withdrawal_per_day").notNull(),
-  durationDays: integer("duration_days").notNull().default(20), // 20 days duration
-  tier: integer("tier").notNull(), // Plan tier (1-10)
-  isActive: integer("is_active", { mode: 'boolean' }).notNull().default(true),
-  createdAt: integer("created_at").notNull().$default(() => Date.now()),
+  durationDays: integer("duration_days").notNull().default(20),
+  tier: integer("tier").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const userInvestments = sqliteTable("user_investments", {
+// User investments table
+export const userInvestments = pgTable("user_investments", {
   id: text("id").primaryKey().$default(() => crypto.randomUUID()),
   userId: text("user_id").notNull(),
   planId: integer("plan_id").notNull(),
   amount: text("amount").notNull(),
   dailyReturn: text("daily_return").notNull(),
   totalReturned: text("total_returned").notNull().default("0"),
-  status: text("status").notNull().default("active"), // 'active', 'completed'
-  startDate: integer("start_date").notNull().$default(() => Date.now()),
-  endDate: integer("end_date"),
-  createdAt: integer("created_at").notNull().$default(() => Date.now()),
+  status: text("status").notNull().default("active"),
+  startDate: timestamp("start_date").notNull().defaultNow(),
+  endDate: timestamp("end_date"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const transactions = sqliteTable("transactions", {
+// Transactions table
+export const transactions = pgTable("transactions", {
   id: text("id").primaryKey().$default(() => crypto.randomUUID()),
   userId: text("user_id").notNull(),
-  type: text("type").notNull(), // 'deposit', 'withdrawal', 'investment', 'referral', 'daily_return'
+  type: text("type").notNull(),
   amount: text("amount").notNull(),
-  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected', 'completed'
+  status: text("status").notNull().default("pending"),
   description: text("description"),
-  reference: text("reference"), // investment_id, referral_code, etc.
-  paymentMethod: text("payment_method"), // 'google_pay', 'phone_pe', 'paytm', 'bank_transfer'
-  paymentScreenshot: text("payment_screenshot"), // URL to uploaded screenshot
+  reference: text("reference"),
+  paymentMethod: text("payment_method"),
+  paymentScreenshot: text("payment_screenshot"),
   adminNotes: text("admin_notes"),
-  createdAt: integer("created_at").notNull().$default(() => Date.now()),
-  updatedAt: integer("updated_at").notNull().$default(() => Date.now()),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const referrals = sqliteTable("referrals", {
+// Referrals table
+export const referrals = pgTable("referrals", {
   id: text("id").primaryKey().$default(() => crypto.randomUUID()),
   referrerId: text("referrer_id").notNull(),
   referredUserId: text("referred_user_id").notNull(),
-  level: integer("level").notNull(), // 1 or 2
+  level: integer("level").notNull(),
   commissionRate: text("commission_rate").notNull(),
   totalEarned: text("total_earned").notNull().default("0"),
-  createdAt: integer("created_at").notNull().$default(() => Date.now()),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const dailyReturns = sqliteTable("daily_returns", {
+// Daily returns table
+export const dailyReturns = pgTable("daily_returns", {
   id: text("id").primaryKey().$default(() => crypto.randomUUID()),
   investmentId: text("investment_id").notNull(),
   userId: text("user_id").notNull(),
   amount: text("amount").notNull(),
-  returnDate: integer("return_date").notNull().$default(() => Date.now()),
-  processed: integer("processed", { mode: 'boolean' }).notNull().default(false),
-  createdAt: integer("created_at").notNull().$default(() => Date.now()),
+  returnDate: timestamp("return_date").notNull().defaultNow(),
+  processed: boolean("processed").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-// Support chat system
-export const supportChats = sqliteTable("support_chats", {
+// Support chats table
+export const supportChats = pgTable("support_chats", {
   id: text("id").primaryKey().$default(() => crypto.randomUUID()),
   userId: text("user_id").notNull(),
   subject: text("subject").notNull(),
-  status: text("status").notNull().default("open"), // 'open', 'closed', 'pending'
-  priority: text("priority").notNull().default("medium"), // 'low', 'medium', 'high'
-  lastMessageAt: integer("last_message_at").notNull().$default(() => Date.now()),
-  createdAt: integer("created_at").notNull().$default(() => Date.now()),
-  updatedAt: integer("updated_at").notNull().$default(() => Date.now()),
+  status: text("status").notNull().default("open"),
+  priority: text("priority").notNull().default("medium"),
+  lastMessageAt: timestamp("last_message_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const supportMessages = sqliteTable("support_messages", {
+export const supportMessages = pgTable("support_messages", {
   id: text("id").primaryKey().$default(() => crypto.randomUUID()),
   chatId: text("chat_id").notNull(),
-  senderId: text("sender_id").notNull(), // user_id or admin_id
-  senderType: text("sender_type").notNull(), // 'user' or 'admin'
+  senderId: text("sender_id").notNull(),
+  senderType: text("sender_type").notNull(),
   message: text("message").notNull(),
-  isRead: integer("is_read", { mode: 'boolean' }).notNull().default(false),
-  createdAt: integer("created_at").notNull().$default(() => Date.now()),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Payment methods configuration
-export const paymentMethods = sqliteTable("payment_methods", {
+export const paymentMethods = pgTable("payment_methods", {
   id: text("id").primaryKey().$default(() => crypto.randomUUID()),
-  type: text("type").notNull(), // 'google_pay', 'phone_pe', 'paytm', 'bank_transfer'
-  name: text("name").notNull(), // Display name
+  type: text("type").notNull(),
+  name: text("name").notNull(),
   upiId: text("upi_id"),
   qrCodeUrl: text("qr_code_url"),
   bankAccountNumber: text("bank_account_number"),
@@ -124,14 +130,14 @@ export const paymentMethods = sqliteTable("payment_methods", {
   bankName: text("bank_name"),
   accountHolderName: text("account_holder_name"),
   instructions: text("instructions"),
-  isActive: integer("is_active", { mode: 'boolean' }).notNull().default(true),
+  isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
-  createdAt: integer("created_at").notNull().$default(() => Date.now()),
-  updatedAt: integer("updated_at").notNull().$default(() => Date.now()),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-// Admin payment configuration (legacy - keeping for compatibility)
-export const paymentConfig = sqliteTable("payment_config", {
+// Admin payment configuration
+export const paymentConfig = pgTable("payment_config", {
   id: integer("id").primaryKey().default(1),
   upiId: text("upi_id"),
   qrCodeUrl: text("qr_code_url"),
@@ -140,8 +146,8 @@ export const paymentConfig = sqliteTable("payment_config", {
   bankName: text("bank_name"),
   accountHolderName: text("account_holder_name"),
   depositInstructions: text("deposit_instructions"),
-  isActive: integer("is_active", { mode: 'boolean' }).notNull().default(true),
-  updatedAt: integer("updated_at").notNull().$default(() => Date.now()),
+  isActive: boolean("is_active").notNull().default(true),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // Relations
@@ -336,7 +342,7 @@ export type UserInvestment = typeof userInvestments.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type Referral = typeof referrals.$inferSelect;
-export type DailyReturn = typeof dailyReturns.$inferSelect;
+export type DailyReturn = z.infer<typeof dailyReturns.$inferSelect>;
 export type UpdateProfile = z.infer<typeof updateProfileSchema>;
 export type ChangePassword = z.infer<typeof changePasswordSchema>;
 export type WithdrawalRequest = z.infer<typeof withdrawalRequestSchema>;
